@@ -6,6 +6,6 @@ test_file="--test_files $file_dir/testset/search.test1.json $file_dir/testset/zh
 files="$train_file $dev_file $test_file"
 
 python run.py --prepare $files
-python run.py --train $files --algo BIDAF --epochs 10 --gpu 2
-python run.py --evaluate $files --algo BIDAF --gpu 2
-python run.py --predict $files --algo BIDAF --gpu 2
+python run.py --train $files --algo BIDAF --epochs 4 --dropout_keep_prob 0.5 --gpu 3
+python run.py --evaluate $files --algo BIDAF --gpu 3
+python run.py --predict $files --algo BIDAF --gpu 3

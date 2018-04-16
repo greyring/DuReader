@@ -274,6 +274,8 @@ class RCModel(object):
                     if bleu_rouge['Bleu-4'] > max_bleu_4:
                         self.save(save_dir, save_prefix)
                         max_bleu_4 = bleu_rouge['Bleu-4']
+
+                    self.save(save_dir, save_prefix + '_' + str(epoch))
                 else:
                     self.logger.warning('No dev set is loaded for evaluation in the dataset!')
             else:

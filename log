@@ -1,2 +1,4 @@
 2018/4/9    constrain the lines of input file to 300000
 2018/4/11   remove the constrain on input lines of each file
+2018/4/16   save modle for every epoch
+2018/4/16   13:27 start training with 0.5 dropout

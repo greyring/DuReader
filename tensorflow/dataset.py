@@ -61,6 +61,8 @@ class BRCDataset(object):
         with open(data_path) as fin:
             data_set = []
             for lidx, line in enumerate(fin):
+                if lidx == 30000:
+                    break
                 sample = json.loads(line.strip())
                 if train:
                     if len(sample['answer_spans']) == 0:

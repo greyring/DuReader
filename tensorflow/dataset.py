@@ -39,7 +39,7 @@ class BRCDataset(object):
         self.train_set, self.dev_set, self.test_set = [], [], []
         if train_files:
             for train_file in train_files:
-                self.train_set += self._load_dataset(train_file, train=True)
+                self.train_set += self._load_dataset(train_file, train=True, max_line=100000)
             self.logger.info('Train set size: {} questions.'.format(len(self.train_set)))
 
         if dev_files:
@@ -52,7 +52,7 @@ class BRCDataset(object):
                 self.test_set += self._load_dataset(test_file)
             self.logger.info('Test set size: {} questions.'.format(len(self.test_set)))
 
-    def _load_dataset(self, data_path, train=False):
+    def _load_dataset(self, data_path, train=False, max_line=-1):
         """
         Loads the dataset
         Args:
@@ -61,9 +61,8 @@ class BRCDataset(object):
         with open(data_path) as fin:
             data_set = []
             for lidx, line in enumerate(fin):
-                if lidx == 30000:
-                    break
                 sample = json.loads(line.strip())
+                if max_line > 0 and lidx >= max_line: break
                 if train:
                     if len(sample['answer_spans']) == 0:
                         continue
@@ -198,7 +197,7 @@ class BRCDataset(object):
                 for passage in sample['passages']:
                     passage['passage_token_ids'] = vocab.convert_to_ids(passage['passage_tokens'])
 
-    def gen_mini_batches(self, set_name, batch_size, pad_id, shuffle=True):
+    def gen_mini_batches(self, set_name, batch_size, pad_id, shuffle=True, epoch=-1):
         """
         Generate data batches for a specific dataset (train/dev/test)
         Args:
@@ -212,15 +211,20 @@ class BRCDataset(object):
         if set_name == 'train':
             data = self.train_set
         elif set_name == 'dev':
-            data = self.dev_set
+            if epoch==-1:
+                data = self.dev_set
+            else:
+                data = self.train_set
         elif set_name == 'test':
             data = self.test_set
         else:
             raise NotImplementedError('No data set named as {}'.format(set_name))
         data_size = len(data)
         indices = np.arange(data_size)
-        if shuffle:
+        if set_name != 'dev' and shuffle:
             np.random.shuffle(indices)
         for batch_start in np.arange(0, data_size, batch_size):
+            if (set_name == 'train' and epoch >= 0 and batch_start//batch_size % 5 == epoch % 5): continue
+            if (set_name == 'dev' and epoch >= 0 and batch_start//batch_size % 5 != epoch % 5): continue
             batch_indices = indices[batch_start: batch_start + batch_size]
             yield self._one_mini_batch(data, batch_indices, pad_id)

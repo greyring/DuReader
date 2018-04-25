@@ -257,25 +257,25 @@ class RCModel(object):
         """
         pad_id = self.vocab.get_id(self.vocab.pad_token)
         max_bleu_4 = 0
+        max_rouge_l = 0
         for epoch in range(1, epochs + 1):
             self.logger.info('Training the model for epoch {}'.format(epoch))
-            train_batches = data.gen_mini_batches('train', batch_size, pad_id, shuffle=True)
+            train_batches = data.gen_mini_batches('train', batch_size, pad_id, shuffle=True, epoch=epoch)
             train_loss = self._train_epoch(train_batches, dropout_keep_prob)
             self.logger.info('Average train loss for epoch {} is {}'.format(epoch, train_loss))
 
             if evaluate:
                 self.logger.info('Evaluating the model after epoch {}'.format(epoch))
-                if data.dev_set is not None:
-                    eval_batches = data.gen_mini_batches('dev', batch_size, pad_id, shuffle=False)
-                    eval_loss, bleu_rouge = self.evaluate(eval_batches)
-                    self.logger.info('Dev eval loss {}'.format(eval_loss))
-                    self.logger.info('Dev eval result: {}'.format(bleu_rouge))
+                #if data.dev_set is not None:
+                eval_batches = data.gen_mini_batches('dev', batch_size, pad_id, shuffle=False, epoch=epoch)
+                eval_loss, bleu_rouge = self.evaluate(eval_batches)
+                self.logger.info('Dev eval loss {}'.format(eval_loss))
+                self.logger.info('Dev eval result: {}'.format(bleu_rouge))
 
-                    if bleu_rouge['Bleu-4'] > max_bleu_4:
-                        self.save(save_dir, save_prefix)
-                        max_bleu_4 = bleu_rouge['Bleu-4']
+                if bleu_rouge['Rouge-L'] > max_rouge_l:
+                    self.save(save_dir, save_prefix)
+                    max_rouge_l = bleu_rouge['Rouge-L']
 
-                    self.save(save_dir, save_prefix + '_' + str(epoch))
                 else:
                     self.logger.warning('No dev set is loaded for evaluation in the dataset!')
             else:

@@ -211,7 +211,7 @@ class BRCDataset(object):
         if set_name == 'train':
             data = self.train_set
         elif set_name == 'dev':
-            if epoch==-1:
+            if epoch < 0:
                 data = self.dev_set
             else:
                 data = self.train_set
@@ -221,7 +221,7 @@ class BRCDataset(object):
             raise NotImplementedError('No data set named as {}'.format(set_name))
         data_size = len(data)
         indices = np.arange(data_size)
-        if set_name != 'dev' and shuffle:
+        if shuffle and (set_name != 'dev' or epoch >= 0):
             np.random.shuffle(indices)
         for batch_start in np.arange(0, data_size, batch_size):
             if (set_name == 'train' and epoch >= 0 and batch_start//batch_size % 5 == epoch % 5): continue

@@ -52,6 +52,7 @@ class RCModel(object):
         self.learning_rate = args.learning_rate
         self.weight_decay = args.weight_decay
         self.use_dropout = args.dropout_keep_prob < 1
+        self.use_devset = args.use_devset
 
         # length limit
         self.max_p_num = args.max_p_num
@@ -260,14 +261,24 @@ class RCModel(object):
         max_rouge_l = 0
         for epoch in range(1, epochs + 1):
             self.logger.info('Training the model for epoch {}'.format(epoch))
-            train_batches = data.gen_mini_batches('train', batch_size, pad_id, shuffle=True, epoch=epoch)
+            if self.use_devset:
+                train_batches = data.gen_mini_batches('train', batch_size, pad_id, shuffle=True)
+            else:
+                train_batches = data.gen_mini_batches('train', batch_size, pad_id, shuffle=True, epoch=epoch)
+
             train_loss = self._train_epoch(train_batches, dropout_keep_prob)
             self.logger.info('Average train loss for epoch {} is {}'.format(epoch, train_loss))
 
             if evaluate:
                 self.logger.info('Evaluating the model after epoch {}'.format(epoch))
-                #if data.dev_set is not None:
-                eval_batches = data.gen_mini_batches('dev', batch_size, pad_id, shuffle=False, epoch=epoch)
+                if self.use_devset:
+                    if data.dev_set is not None:
+                        eval_batches = data.gen_mini_batches('dev', batch_size, pad_id, shuffle=False)
+                    else:
+                        self.logger.warning('No dev set is loaded for evaluation in the dataset!')
+                else:
+                    eval_batches = data.gen_mini_batches('dev', batch_size, pad_id, shuffle=False, epoch=epoch)
+
                 eval_loss, bleu_rouge = self.evaluate(eval_batches)
                 self.logger.info('Dev eval loss {}'.format(eval_loss))
                 self.logger.info('Dev eval result: {}'.format(bleu_rouge))
@@ -276,10 +287,10 @@ class RCModel(object):
                     self.save(save_dir, save_prefix)
                     max_rouge_l = bleu_rouge['Rouge-L']
 
-                else:
-                    self.logger.warning('No dev set is loaded for evaluation in the dataset!')
             else:
                 self.save(save_dir, save_prefix + '_' + str(epoch))
+
+            self.save(save_dir, save_prefix + '_last')
 
     def evaluate(self, eval_batches, result_dir=None, result_prefix=None, save_full_info=False):
         """

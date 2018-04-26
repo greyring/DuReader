@@ -24,9 +24,13 @@ mkdir ../data/results/$model_id/test2
 
 save_dir="--model_dir ../data/models/$model_id --log_path ../data/logs/$model_id.log"
 
-param="--algo BIDAF --epochs 6 --batch_size 32 --embed_size 300 --gpu 2"
+param="--algo BIDAF --epochs 10 --batch_size 32 --embed_size 300 --gpu 2"
 
-python run.py --prepare $files $save_dir $param
-python run.py --train $files $save_dir $param
+#--use_devset
+
+#python run.py --prepare $files $save_dir $param
+#python run.py --train $files $save_dir $param
 #python run.py --predict $train_file $dev_file $save_dir $test1 $param
 #python run.py --predict $train_file $dev_file $save_dir $test2 $param
+
+python run.py --resume $files $save_dir $param

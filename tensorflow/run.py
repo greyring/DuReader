@@ -45,6 +45,8 @@ def parse_args():
                         help='evaluate the model on dev set')
     parser.add_argument('--predict', action='store_true',
                         help='predict the answers for test set with trained model')
+    parser.add_argument('--resume', action='store_true',
+                        help='continue to train, _last model will be loaded')
     parser.add_argument('--gpu', type=str, default='0',
                         help='specify gpu device')
 
@@ -61,6 +63,8 @@ def parse_args():
                                 help='train batch size')
     train_settings.add_argument('--epochs', type=int, default=10,
                                 help='train epochs')
+    train_settings.add_argument('--use_devset', action='store_true', 
+                                help='use devset for evaluation or evaluate on trainset') 
 
     model_settings = parser.add_argument_group('model settings')
     model_settings.add_argument('--algo', choices=['BIDAF', 'MLSTM'], default='BIDAF',
@@ -100,6 +104,7 @@ def parse_args():
                                help='the dir to write tensorboard summary')
     path_settings.add_argument('--log_path',
                                help='path of the log file. If not set, logs are printed to console')
+
     return parser.parse_args()
 
 
@@ -159,6 +164,26 @@ def train(args):
                    dropout_keep_prob=args.dropout_keep_prob)
     logger.info('Done with model training!')
 
+def resume(args):
+    """
+    resume the reading comprehension model
+    """
+    logger = logging.getLogger("brc")
+    logger.info('Load data_set and vocab...')
+    with open(os.path.join(args.vocab_dir, 'vocab.data'), 'rb') as fin:
+        vocab = pickle.load(fin)
+    brc_data = BRCDataset(args.max_p_num, args.max_p_len, args.max_q_len,
+                          args.train_files, args.dev_files)
+    logger.info('Converting text into ids...')
+    brc_data.convert_to_ids(vocab)
+    logger.info('Restoring the model...')
+    rc_model = RCModel(vocab, args)
+    rc_model.restore(model_dir=args.model_dir, model_prefix=args.algo+'_last')
+    logger.info('Resume the training...')
+    rc_model.train(brc_data, args.epochs, args.batch_size, save_dir=args.model_dir,
+                   save_prefix=args.algo,
+                   dropout_keep_prob=args.dropout_keep_prob)
+    logger.info('Done with model training!')
 
 def evaluate(args):
     """
@@ -237,6 +262,8 @@ def run():
         prepare(args)
     if args.train:
         train(args)
+    if args.resume:
+        resume(args)
     if args.evaluate:
         evaluate(args)
     if args.predict:

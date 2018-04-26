@@ -39,7 +39,7 @@ class BRCDataset(object):
         self.train_set, self.dev_set, self.test_set = [], [], []
         if train_files:
             for train_file in train_files:
-                self.train_set += self._load_dataset(train_file, train=True, max_line=100000)
+                self.train_set += self._load_dataset(train_file, train=True, max_line=50000)
             self.logger.info('Train set size: {} questions.'.format(len(self.train_set)))
 
         if dev_files:

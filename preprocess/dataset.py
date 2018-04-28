@@ -62,14 +62,18 @@ class Dataset(object):
                 if max_line >= 0 and lidx > max_line: break
                 sample = json.loads(line)
                 data_sample = []
-                for doc in sample['documents']:
+                for doc_id, doc in enumerate(sample['documents']):
                     if set_name == 'train' or set_name == 'dev':
                         data_sample.append({'question':sample['segmented_question'],
                                             'paras': doc['segmented_paragraphs'], 
-                                            'answer': doc['most_related_para']})
+                                            'answer': doc['most_related_para'],
+                                            'question_id':sample['question_id'],
+                                            'doc_id':doc_id})
                     else:
                         data_sample.append({'question':sample['segmented_question'],
-                                            'paras':doc['segmented_paragraphs']})
+                                            'paras':doc['segmented_paragraphs'],
+                                            'question_id':sample['question_id'],
+                                            'doc_id':doc_id})
                 dataset += data_sample
         return dataset
 
@@ -132,7 +136,8 @@ class Dataset(object):
             yield self._one_mini_batch(data, batch_indices, pad_id)
     
     def _one_mini_batch(self, data, batch_indices, pad_id):
-        batch_data = {'question':[],'question_len':[],'paras':[],'paras_len':[],'answer':[]}
+        batch_data = {'question':[],'question_len':[],'paras':[],'paras_len':[],'answer':[],
+                      'quesiont_id':[],'doc_id':[]}
         for i in batch_indices:
             one_case = data[i]
             q, q_len = self._formal_q(one_case['question_ids'], pad_id)
@@ -144,5 +149,5 @@ class Dataset(object):
             if 'answer' in one_case:
                 batch_data['answer'].append(one_case['answer'])
             else:
-                batch_data['answer'].append(-1)
+                batch_data['answer'].append(0)
         return batch_data

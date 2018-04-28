@@ -6,6 +6,7 @@ import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 from vocab import Vocab
 from dataset import Dataset
+from model import Model
 import json
 
 def parse_args():
@@ -30,8 +31,10 @@ def parse_args():
                                 help='the initial learning rate')
     train_settings.add_argument('--batch_size', type=int, default=32,
                                 help='batch size')
-    train_settings.add_argument('--epochs', type=int, default=50,
-                                help='train epochs')
+    #train_settings.add_argument('--dropout_keep_prob', type=float, default=1.0,
+    #                            help='dropout keep probability')
+    train_settings.add_argument('--epoches', type=int, default=50,
+                                help='train epoches')
     
     data_settings = parser.add_argument_group('data settings')
     data_settings.add_argument('--max_line', type=int, default=80000,
@@ -74,10 +77,39 @@ def prepare(args):
     return dataset, vocab
 
 def train(args, dataset, vocab):
-    pass
+    model = Model(args, dataset, vocab)
+    model.train()
+    
 
 def predict(args, dataset, vocab):
-    pass
+    logger = logging.getLogger('brc')
+
+    model = Model(args, dataset, vocab)
+    model.restore()
+    model.predict()
+
+    logger.info('Start changing...')
+    answers = {}
+    with open(os.path.join(args.save_dir, 'result.json'), 'r') as fin:
+        for line in fin:
+            d = json.loads(line)
+            answers[(d['question_id'], d['doc_id'])] = d['answer']
+    
+    bad_num = 0
+    for test_file in args.test_file:
+        with open(test_file, 'r') as fin:
+            with open(test_file+'.json', 'w') as fout:
+                for line in fin:
+                    sample = json.loads(line)
+                    for docid, doc in enumerate(sample['documents']):
+                        if (tuple(sample['question_id'], docid) in answers) and \
+                            (answers[(sample['question_id'], docid)] < len(doc['paragraphs'])):
+                            doc['most_related_para'] = answers[(sample['question_id'], docid)]
+                        else:
+                            bad_num += 1
+                    fout.write(json.dumps(sample, ensure_ascii=False) + '\n')
+                    
+    logger.info('Finish changing with {} bad answers'.format(bad_num))
 
 def run():
     args = parse_args()
@@ -100,9 +132,6 @@ def run():
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
 
     dataset, vocab = prepare(args)
-    for idx, batch in enumerate(dataset.gen_mini_batches('train',2, vocab.get_id(vocab.pad_token))):
-       if idx>10: break
-       print(json.dumps(batch))
     if args.train:
         train(args, dataset, vocab)
     if args.predict:

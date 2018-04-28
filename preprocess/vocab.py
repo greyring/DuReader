@@ -32,7 +32,7 @@ class Vocab(object):
         else:
             return self.id2token[idx]
     
-    def add_list(self, tokens:list):
+    def add_list(self, tokens):
         for token in tokens:
             if token in self.vocab:
                 self.vocab[token]+=1
@@ -55,10 +55,10 @@ class Vocab(object):
         for token in [self.pad_token, self.unk_token]:
             self.embeddings[self.get_id(token)] = np.zeros([self.embed_size])
 
-    def convert_to_ids(self, tokens:list)->list:
+    def convert_to_ids(self, tokens):
         vec = [self.get_id(label) for label in tokens]
         return vec
     
-    def recover_from_ids(self, ids:list)->list:
+    def recover_from_ids(self, ids):
         tokens = [self.get_token(id) for id in ids]
         return tokens

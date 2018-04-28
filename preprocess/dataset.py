@@ -4,7 +4,7 @@ import numpy as np
 import logging
 
 class Dataset(object):
-    def __init__(self, args, vocab:Vocab):
+    def __init__(self, args, vocab):
         self.train_files = args.train_files
         self.dev_files = args.dev_files
         self.test_files = args.test_files
@@ -47,7 +47,7 @@ class Dataset(object):
         self._conver_to_ids(vocab)
         self.logger.info('Convert finish')
 
-    def _load_dataset(self, file_name:str, max_line=-1)->list:
+    def _load_dataset(self, file_name, max_line=-1):
         dataset = []
         with open(file_name,'r',encoding='utf-8') as fin:
             for lidx, line in enumerate(fin, 1):
@@ -65,7 +65,7 @@ class Dataset(object):
                 dataset += data_sample
         return dataset
 
-    def _conver_to_ids(self, vocab:Vocab):
+    def _conver_to_ids(self, vocab):
         for data_set in [self.train_set, self.dev_set, self.test_set]:
             if data_set is None:
                 continue
@@ -73,13 +73,13 @@ class Dataset(object):
                 sample['question_ids'] = vocab.convert_to_ids(sample['question'])
                 sample['paras_ids'] = [vocab.convert_to_ids(para) for para in sample['paras']]
 
-    def _formal_q(self, question_ids:list, pad_id)->tuple:
+    def _formal_q(self, question_ids, pad_id):
         #trunc or pad the question to q_len
         q_len = min(self.q_len, len(question_ids))
         q = [(lambda idx: question_ids[idx] if idx<q_len else pad_id) for idx in range(self.q_len)]
         return q, q_len
 
-    def _formal_paras(self, paras_ids:list, pad_id)->tuple:
+    def _formal_paras(self, paras_ids, pad_id):
         #trunc or pad paragraphs in paras to p_num
         #trunc or pad each para in paras to p_len
         paras = []

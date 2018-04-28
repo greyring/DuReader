@@ -63,21 +63,21 @@ class BRCDataset(object):
             for lidx, line in enumerate(fin):
                 sample = json.loads(line.strip())
                 if max_line > 0 and lidx >= max_line: break
-                if train:
+                if train:#必须要有合法的fake answer(span answer)
                     if len(sample['answer_spans']) == 0:
                         continue
                     if sample['answer_spans'][0][1] >= self.max_p_len:
                         continue
 
-                if 'answer_docs' in sample:
-                    sample['answer_passages'] = sample['answer_docs']
+                if 'answer_docs' in sample:#trainset devset会有 devset有answer_spans testset没有 所以devset不能用这个
+                    sample['answer_passages'] = sample['answer_docs']#answer_passages是新的,只有数字
 
-                sample['question_tokens'] = sample['segmented_question']
+                sample['question_tokens'] = sample['segmented_question']#question_tokens是新的
 
-                sample['passages'] = []
-                for d_idx, doc in enumerate(sample['documents']):
+                sample['passages'] = []#passages是新的
+                for d_idx, doc in enumerate(sample['documents']):#每个doc会往passages中加一个
                     if train:
-                        most_related_para = doc['most_related_para']
+                        most_related_para = doc['most_related_para']#每个doc的最recall最高para，train dev有 test没有
                         sample['passages'].append(
                             {'passage_tokens': doc['segmented_paragraphs'][most_related_para],
                              'is_selected': doc['is_selected']}
@@ -97,8 +97,10 @@ class BRCDataset(object):
                         fake_passage_tokens = []
                         for para_info in para_infos[:1]:
                             fake_passage_tokens += para_info[0]
-                        sample['passages'].append({'passage_tokens': fake_passage_tokens})
+                        sample['passages'].append({'passage_tokens': fake_passage_tokens})#根据和question的recall得到的passage
+                        #这里是很可能出问题的，train的时候用的paragraph比较好，但实际中用的paragraph不是很好，这里需要改进
                 data_set.append(sample)
+                #每个sample有question_tokens, passages(passage_tokens, *isselected(train的有其他没有))的list,以及answer_passages,answer_spans(train有)
         return data_set
 
     def _one_mini_batch(self, data, indices, pad_id):
@@ -111,7 +113,7 @@ class BRCDataset(object):
         Returns:
             one batch of data
         """
-        batch_data = {'raw_data': [data[i] for i in indices],
+        batch_data = {'raw_data': [data[i] for i in indices],#data[i]是一行，是一个样例
                       'question_token_ids': [],
                       'question_length': [],
                       'passage_token_ids': [],
@@ -120,22 +122,22 @@ class BRCDataset(object):
                       'end_id': []}
         max_passage_num = max([len(sample['passages']) for sample in batch_data['raw_data']])
         max_passage_num = min(self.max_p_num, max_passage_num)
-        for sidx, sample in enumerate(batch_data['raw_data']):
-            for pidx in range(max_passage_num):
+        for sidx, sample in enumerate(batch_data['raw_data']):#对每个样例
+            for pidx in range(max_passage_num):#每一个样例都会有多个question-passage对，取决于max_passage_num
                 if pidx < len(sample['passages']):
                     batch_data['question_token_ids'].append(sample['question_token_ids'])
                     batch_data['question_length'].append(len(sample['question_token_ids']))
                     passage_token_ids = sample['passages'][pidx]['passage_token_ids']
                     batch_data['passage_token_ids'].append(passage_token_ids)
                     batch_data['passage_length'].append(min(len(passage_token_ids), self.max_p_len))
-                else:
+                else:#做一个padding
                     batch_data['question_token_ids'].append([])
                     batch_data['question_length'].append(0)
                     batch_data['passage_token_ids'].append([])
                     batch_data['passage_length'].append(0)
         batch_data, padded_p_len, padded_q_len = self._dynamic_padding(batch_data, pad_id)
-        for sample in batch_data['raw_data']:
-            if 'answer_passages' in sample and len(sample['answer_passages']):
+        for sample in batch_data['raw_data']:#每个样例一个参考答案
+            if 'answer_passages' in sample and len(sample['answer_passages']):#train dev会有
                 gold_passage_offset = padded_p_len * sample['answer_passages'][0]
                 batch_data['start_id'].append(gold_passage_offset + sample['answer_spans'][0][0])
                 batch_data['end_id'].append(gold_passage_offset + sample['answer_spans'][0][1])

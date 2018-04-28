@@ -168,11 +168,11 @@ class RCModel(object):
             concat_passage_encodes = tf.reshape(
                 self.fuse_p_encodes,
                 [batch_size, -1, 2 * self.hidden_size]
-            )
+            )#把一个sample对应的多个passage合起来
             no_dup_question_encodes = tf.reshape(
                 self.sep_q_encodes,
                 [batch_size, -1, tf.shape(self.sep_q_encodes)[1], 2 * self.hidden_size]
-            )[0:, 0, 0:, 0:]
+            )[0:, 0, 0:, 0:]#把一个sample对应的多个question只留一个
         decoder = PointerNetDecoder(self.hidden_size)
         self.start_probs, self.end_probs = decoder.decode(concat_passage_encodes,
                                                           no_dup_question_encodes)
@@ -226,12 +226,12 @@ class RCModel(object):
         total_num, total_loss = 0, 0
         log_every_n_batch, n_batch_loss = 50, 0
         for bitx, batch in enumerate(train_batches, 1):
-            feed_dict = {self.p: batch['passage_token_ids'],
-                         self.q: batch['question_token_ids'],
-                         self.p_length: batch['passage_length'],
-                         self.q_length: batch['question_length'],
-                         self.start_label: batch['start_id'],
-                         self.end_label: batch['end_id'],
+            feed_dict = {self.p: batch['passage_token_ids'],#段落的list
+                         self.q: batch['question_token_ids'],#问题的list
+                         self.p_length: batch['passage_length'],#每个段落的length
+                         self.q_length: batch['question_length'],#每个问题的length
+                         self.start_label: batch['start_id'],#一列开始id
+                         self.end_label: batch['end_id'],#一列结束id数目比p要少
                          self.dropout_keep_prob: dropout_keep_prob}
             _, loss = self.sess.run([self.train_op, self.loss], feed_dict)
             total_loss += loss * len(batch['raw_data'])

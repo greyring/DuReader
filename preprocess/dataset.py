@@ -10,7 +10,6 @@ class Dataset(object):
         self.test_files = args.test_files
         self.max_line = args.max_line
         self.train = args.train
-        self.dev = args.dev
         self.predict = args.predict
         self.p_num = args.p_num
         self.p_len = args.p_len
@@ -21,41 +20,50 @@ class Dataset(object):
         self.test_set= []
         self.logger = logging.getLogger("brc")
 
-        for file_name in self.train_files:
+        for file_name in self.train_files.split():
             self.logger.info('Reading train set...')
-            self.train_set += self._load_dataset(file_name, self.max_line)
+            self.train_set += self._load_dataset('train', file_name, self.max_line)
             self.logger.info('Train set size: %d docs.'%(len(self.train_set)))
-        for file_name in self.dev_files:
+        for file_name in self.dev_files.split():
             self.logger.info('Reading dev set...')
-            self.dev_set += self._load_dataset(file_name)
+            self.dev_set += self._load_dataset('dev', file_name)
             self.logger.info('Dev set size: %d docs.'%(len(self.dev_set)))
-        for file_name in self.test_files:
+        for file_name in self.test_files.split():
             self.logger.info('Reading test set...')
-            self.test_set += self._load_dataset(file_name)
+            self.test_set += self._load_dataset('test', file_name)
             self.logger.info('Test set size: %d docs.'%(len(self.test_set)))
         
         self.logger.info('Adding word to Vocab model...')
         for data_set in [self.train_set, self.dev_set, self.test_set]:
-            vocab.add_list(data_set['question'])
-            for para in data_set['paras']:
-                vocab.add_list(para)
-        vocab.filter_tokens_by_cnt(min_cnt=5)
-        vocab.randomly_init_embeddings()
+            for sample in data_set:
+                vocab.add_list(sample['question'])
+                for para in sample['paras']:
+                    vocab.add_list(para)
+        vocab.gen_ids()
+        self.logger.info('Vocab has %d different words before filter'%(vocab.size()))
+        vocab.filter_tokens_by_cnt(min_cnt=2)
+        self.logger.info('Generate ids...')
+        vocab.gen_ids()
+        self.logger.info('Generate finishes')
         self.logger.info('Vocab has %d different words'%(vocab.size()))
         
         self.logger.info('Converting words to ids...')
         self._conver_to_ids(vocab)
         self.logger.info('Convert finish')
 
-    def _load_dataset(self, file_name, max_line=-1):
+        self.logger.info('Init embeddings...')
+        vocab.randomly_init_embeddings()
+        self.logger.info('Init finishes')
+
+    def _load_dataset(self, set_name, file_name, max_line=-1):
         dataset = []
-        with open(file_name,'r',encoding='utf-8') as fin:
+        with open(file_name,'r') as fin:
             for lidx, line in enumerate(fin, 1):
                 if max_line >= 0 and lidx > max_line: break
                 sample = json.loads(line)
                 data_sample = []
                 for doc in sample['documents']:
-                    if self.train or self.dev:
+                    if set_name == 'train' or set_name == 'dev':
                         data_sample.append({'question':sample['segmented_question'],
                                             'paras': doc['segmented_paragraphs'], 
                                             'answer': doc['most_related_para']})
@@ -76,7 +84,12 @@ class Dataset(object):
     def _formal_q(self, question_ids, pad_id):
         #trunc or pad the question to q_len
         q_len = min(self.q_len, len(question_ids))
-        q = [(lambda idx: question_ids[idx] if idx<q_len else pad_id) for idx in range(self.q_len)]
+        q = []
+        for idx in range(self.q_len):
+            if idx<q_len:
+                q.append(question_ids[idx])
+            else:
+                q.append(pad_id)
         return q, q_len
 
     def _formal_paras(self, paras_ids, pad_id):
@@ -90,7 +103,12 @@ class Dataset(object):
                 paras_lens.append(0)
             else:
                 para_len = min(self.p_len, len(paras_ids[para_id]))
-                para = [(lambda idx: paras_ids[para_id][idx] if idx < para_len else pad_id) for idx in range(self.p_len)]
+                para = []
+                for idx in range(self.p_len):
+                    if idx<para_len:
+                        para.append(paras_ids[para_id][idx])
+                    else:
+                        para.append(pad_id)
                 paras.append(para)
                 paras_lens.append(para_len)
         return paras, paras_lens
@@ -124,7 +142,7 @@ class Dataset(object):
             batch_data['paras'].append(paras)
             batch_data['paras_len'].append(paras_lens)
             if 'answer' in one_case:
-                batch_data['answer'] = one_case['answer']
+                batch_data['answer'].append(one_case['answer'])
             else:
-                batch_data['answer'] = -1
+                batch_data['answer'].append(-1)
         return batch_data

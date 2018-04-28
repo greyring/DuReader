@@ -1,18 +1,20 @@
 import numpy as np
+import json
 
 class Vocab(object):
     '''
         1.add_list
         2.filter_tokens_by_cnt
-        3.randomly_init_embeddings
+        3.gen_ids
         4.convert_to_ids
+        5.randomly_init_embeddings
     '''
     def __init__(self, args):
         self.embed_size = args.embed_size
         self.pad_token = '<pad>'
         self.unk_token = '<unk>'
-        self.id2token = None
-        self.token2id = None
+        self.id2token = []
+        self.token2id = {}
         self.vocab = {}#vocab, num
         self.embeddings = None
         

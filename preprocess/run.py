@@ -6,6 +6,7 @@ import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 from vocab import Vocab
 from dataset import Dataset
+import json
 
 def parse_args():
     parser = argparse.ArgumentParser('mode settings')
@@ -45,15 +46,13 @@ def parse_args():
 
     path_settings = parser.add_argument_group('path settings')
     path_settings.add_argument('--train_files', type=str, 
-                               default='../data/raw/trainset/search.train2.json',
+                               default='../data/demo/trainset/search.train.json',
                                help='train files')
     path_settings.add_argument('--dev_files', type=str, 
-                               default='../data/raw/devset/search.dev2.json '+
-                                       '../data/raw/devset/zhidao.dev2.json',
+                               default='../data/demo/devset/search.dev.json',
                                help='dev files')                          
     path_settings.add_argument('--test_files', type=str, 
-                               default='../data/raw/testset/search.test2.json '+
-                                       '../data/raw/testset/zhidao.test2.json',
+                               default='../data/demo/testset/search.test.json',
                                help='test files')
     path_settings.add_argument('--save_dir', type=str, 
                                default='../data/save',
@@ -101,6 +100,9 @@ def run():
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
 
     dataset, vocab = prepare(args)
+    for idx, batch in enumerate(dataset.gen_mini_batches('train',2, vocab.get_id(vocab.pad_token))):
+       if idx>10: break
+       print(json.dumps(batch))
     if args.train:
         train(args, dataset, vocab)
     if args.predict:

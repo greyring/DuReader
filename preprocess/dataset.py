@@ -19,6 +19,7 @@ class Dataset(object):
         self.dev_set = []
         self.test_set= []
         self.logger = logging.getLogger("brc")
+        self.vocab = vocab
 
         for file_name in self.train_files.split():
             self.logger.info('Reading train set...')
@@ -32,28 +33,26 @@ class Dataset(object):
             self.logger.info('Reading test set...')
             self.test_set += self._load_dataset('test', file_name)
             self.logger.info('Test set size: %d docs.'%(len(self.test_set)))
-        
+       
+    def add_words(self):
         self.logger.info('Adding word to Vocab model...')
         for data_set in [self.train_set, self.dev_set, self.test_set]:
             for sample in data_set:
-                vocab.add_list(sample['question'])
+                self.vocab.add_list(sample['question'])
                 for para in sample['paras']:
-                    vocab.add_list(para)
-        vocab.gen_ids()
-        self.logger.info('Vocab has %d different words before filter'%(vocab.size()))
-        vocab.filter_tokens_by_cnt(min_cnt=2)
+                    self.vocab.add_list(para)
+        self.vocab.gen_ids()
+        self.logger.info('Vocab has %d different words before filter'%(self.vocab.size()))
+        self.vocab.filter_tokens_by_cnt(min_cnt=2)
         self.logger.info('Generate ids...')
-        vocab.gen_ids()
+        self.vocab.gen_ids()
         self.logger.info('Generate finishes')
-        self.logger.info('Vocab has %d different words'%(vocab.size()))
+        self.logger.info('Vocab has %d different words'%(self.vocab.size()))
         
+    def convert_to_ids(self):
         self.logger.info('Converting words to ids...')
-        self._conver_to_ids(vocab)
+        self._conver_to_ids(self.vocab)
         self.logger.info('Convert finish')
-
-        self.logger.info('Init embeddings...')
-        vocab.randomly_init_embeddings()
-        self.logger.info('Init finishes')
 
     def _load_dataset(self, set_name, file_name, max_line=-1):
         dataset = []
@@ -136,8 +135,7 @@ class Dataset(object):
             yield self._one_mini_batch(data, batch_indices, pad_id)
     
     def _one_mini_batch(self, data, batch_indices, pad_id):
-        batch_data = {'question':[],'question_len':[],'paras':[],'paras_len':[],'answer':[],
-                      'quesiont_id':[],'doc_id':[]}
+        batch_data = {'question':[],'question_len':[],'paras':[],'paras_len':[],'answer':[], 'question_id':[],'doc_id':[]}
         for i in batch_indices:
             one_case = data[i]
             q, q_len = self._formal_q(one_case['question_ids'], pad_id)
@@ -150,4 +148,7 @@ class Dataset(object):
                 batch_data['answer'].append(one_case['answer'])
             else:
                 batch_data['answer'].append(0)
+
+            batch_data['question_id'].append(one_case['question_id'])
+            batch_data['doc_id'].append(one_case['doc_id']) 
         return batch_data

@@ -8,11 +8,15 @@ from vocab import Vocab
 from dataset import Dataset
 from model import Model
 import json
+import sys
+if sys.version[0] == '2':
+    reload(sys)
+    sys.setdefaultencoding("utf-8")
 
 def parse_args():
     parser = argparse.ArgumentParser('mode settings')
-    #parser.add_argument('--prepare', action='store_true',
-    #                    help='build vocab')
+    parser.add_argument('--prepare', action='store_true',
+                        help='build vocab')
     parser.add_argument('--train', action='store_true',
                         help='train the model')
     parser.add_argument('--predict', action='store_true',
@@ -23,11 +27,11 @@ def parse_args():
     train_settings = parser.add_argument_group('train settings')
     train_settings.add_argument('--hidden_size', type=int, default=200,
                                 help='the hidden size')
-    train_settings.add_argument('--embed_size', type=int, default=300,
+    train_settings.add_argument('--embed_size', type=int, default=200,
                                 help='word embedding size')
     train_settings.add_argument('--filters_num', type=int, default=4000,
                                 help='number of CNN filters')
-    train_settings.add_argument('--learning_rate', type=float, default=0.01,
+    train_settings.add_argument('--learning_rate', type=float, default=0.001,
                                 help='the initial learning rate')
     train_settings.add_argument('--batch_size', type=int, default=32,
                                 help='batch size')
@@ -60,9 +64,9 @@ def parse_args():
     path_settings.add_argument('--save_dir', type=str, 
                                default='../data/save',
                                help='dir to put the predict results')
-    path_settings.add_argument('--log_path', type=str,
-                               default='../data/logs/default.log',
-                               help='dir to save log file')
+    #path_settings.add_argument('--log_path', type=str,
+    #                           default='../data/logs/default.log',
+    #                           help='dir to save log file')
     return parser.parse_args()
 
 def prepare(args):
@@ -70,19 +74,52 @@ def prepare(args):
     logger.info('Start preparing')
     vocab = Vocab(args)
     dataset = Dataset(args, vocab)
-    #logger.info('Saving vocab...')
-    #with open(os.path.join(args.save_dir, 'vocab.data'), 'wb') as fout:
-    #    pickle.dump(vocab, fout)
-    logger.info('Done with preparing')
-    return dataset, vocab
+    dataset.add_words()
 
-def train(args, dataset, vocab):
+    logger.info('Initing embedding...')
+    vocab.randomly_init_embeddings()
+    logger.info('Done with init')
+
+    logger.info('Saving vocab...')
+    with open(os.path.join(args.save_dir, 'vocab.data'), 'wb') as fout:
+        pickle.dump(vocab, fout)
+    logger.info('Done with preparing')
+
+    del vocab
+    del dataset
+    return 
+
+def train(args):
+    logger = logging.getLogger('brc')
+
+    logger.info('Training start...')
+    logger.info('Load data_set and vocab...')
+    with open(os.path.join(args.save_dir, 'vocab.data'), 'rb') as fin:
+        vocab = pickle.load(fin)
+    logger.info('Done with loading')
+
+    dataset = Dataset(args, vocab)
+    dataset.convert_to_ids()
+    
     model = Model(args, dataset, vocab)
     model.train()
-    
+    del vocab
+    del dataset
+    del model
+    logger.info('Done with training')
+    return
 
-def predict(args, dataset, vocab):
+def predict(args):
     logger = logging.getLogger('brc')
+
+    logger.info('Predicting start...')
+    logger.info('Load data_set and vocab...')
+    with open(os.path.join(args.save_dir, 'vocab.data'), 'rb') as fin:
+        vocab = pickle.load(fin)
+    logger.info('Done with loading')
+    
+    dataset = Dataset(args,vocab)
+    dataset.convert_to_ids()
 
     model = Model(args, dataset, vocab)
     model.restore()
@@ -93,16 +130,16 @@ def predict(args, dataset, vocab):
     with open(os.path.join(args.save_dir, 'result.json'), 'r') as fin:
         for line in fin:
             d = json.loads(line)
-            answers[(d['question_id'], d['doc_id'])] = d['answer']
+            answers[(d['question_id'], d['doc_id'])] = d['most_related_para']
     
     bad_num = 0
-    for test_file in args.test_file:
+    for test_file in args.test_files.split():
         with open(test_file, 'r') as fin:
             with open(test_file+'.json', 'w') as fout:
                 for line in fin:
                     sample = json.loads(line)
                     for docid, doc in enumerate(sample['documents']):
-                        if (tuple(sample['question_id'], docid) in answers) and \
+                        if ((sample['question_id'], docid) in answers) and \
                             (answers[(sample['question_id'], docid)] < len(doc['paragraphs'])):
                             doc['most_related_para'] = answers[(sample['question_id'], docid)]
                         else:
@@ -111,31 +148,34 @@ def predict(args, dataset, vocab):
                     
     logger.info('Finish changing with {} bad answers'.format(bad_num))
 
+    del vocab
+    del dataset
+    del model
+    logger.info('Done with predicting')
+    return
+
 def run():
     args = parse_args()
 
     logger = logging.getLogger("brc")
     logger.setLevel(logging.INFO)
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    if args.log_path:
-        file_handler = logging.FileHandler(args.log_path)
-        file_handler.setLevel(logging.INFO)
-        file_handler.setFormatter(formatter)
-        logger.addHandler(file_handler)
-    else:
-        print('no log path found')
-        return
+    file_handler = logging.FileHandler(os.path.join(args.save_dir, 'default.log'))
+    file_handler.setLevel(logging.INFO)
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
     
     logger.info('Running with args : {}'.format(args))
 
     os.environ['CUDA_DEVICE_ORDER'] = "PCI_BUS_ID"
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
 
-    dataset, vocab = prepare(args)
+    if args.prepare:
+        prepare(args)
     if args.train:
-        train(args, dataset, vocab)
+        train(args)
     if args.predict:
-        predict(args, dataset, vocab)
+        predict(args)
 
 if __name__ == '__main__':
     run()

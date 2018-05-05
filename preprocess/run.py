@@ -52,14 +52,14 @@ def parse_args():
     
 
     path_settings = parser.add_argument_group('path settings')
-    path_settings.add_argument('--train_files', type=str, 
-                               default='../data/demo/trainset/search.train.json',
+    path_settings.add_argument('--train_files', nargs="+", 
+                               default=['../data/demo/trainset/search.train.json'],
                                help='train files')
-    path_settings.add_argument('--dev_files', type=str, 
-                               default='../data/demo/devset/search.dev.json',
+    path_settings.add_argument('--dev_files', nargs="+", 
+                               default=['../data/demo/devset/search.dev.json'],
                                help='dev files')                          
-    path_settings.add_argument('--test_files', type=str, 
-                               default='../data/demo/testset/search.test.json',
+    path_settings.add_argument('--test_files', nargs="+", 
+                               default=['../data/demo/testset/search.test.json'],
                                help='test files')
     path_settings.add_argument('--save_dir', type=str, 
                                default='../data/save',
@@ -133,7 +133,7 @@ def predict(args):
             answers[(d['question_id'], d['doc_id'])] = d['most_related_para']
     
     bad_num = 0
-    for test_file in args.test_files.split():
+    for test_file in args.test_files:
         with open(test_file, 'r') as fin:
             with open(test_file+'.json', 'w') as fout:
                 for line in fin:

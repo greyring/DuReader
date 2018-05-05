@@ -37,7 +37,7 @@ def precision_recall_f1(prediction, ground_truth):
     Raises:
         None
     """
-    if not isinstance(prediction, list):#用空格分词也是可以的
+    if not isinstance(prediction, list):
         prediction_tokens = prediction.split()
     else:
         prediction_tokens = prediction
@@ -48,10 +48,10 @@ def precision_recall_f1(prediction, ground_truth):
     common = Counter(prediction_tokens) & Counter(ground_truth_tokens)
     num_same = sum(common.values())
     if num_same == 0:
-        return 0, 0, 0#两个共有的词的数目
-    p = 1.0 * num_same / len(prediction_tokens)#共有词的数目在文章中的个数
-    r = 1.0 * num_same / len(ground_truth_tokens)#共有词的数目在答案中的数目
-    f1 = (2 * p * r) / (p + r)#f1分数
+        return 0, 0, 0
+    p = 1.0 * num_same / len(prediction_tokens)
+    r = 1.0 * num_same / len(ground_truth_tokens)
+    f1 = (2 * p * r) / (p + r)
     return p, r, f1
 
 
@@ -95,11 +95,11 @@ def metric_max_over_ground_truths(metric_fn, prediction, ground_truths):
     Raises:
         None
     """
-    scores_for_ground_truths = []#每个答案对应一组值
-    for ground_truth in ground_truths:#有多个答案，对每一个答案计算
-        score = metric_fn(prediction, ground_truth)#一个paragraph 一个答案
+    scores_for_ground_truths = []
+    for ground_truth in ground_truths:
+        score = metric_fn(prediction, ground_truth)
         scores_for_ground_truths.append(score)
-    return max(scores_for_ground_truths)#返回最高匹配的
+    return max(scores_for_ground_truths)
 
 
 def find_best_question_match(doc, question, with_score=False):
@@ -151,15 +151,15 @@ def find_fake_answer(sample):
     Raises:
         None
     """
-    for doc in sample['documents']:#documents中有很多doc，每个doc有一个最好的paragraph
+    for doc in sample['documents']:
         most_related_para = -1
         most_related_para_len = 999999
         max_related_score = 0
-        for p_idx, para_tokens in enumerate(doc['segmented_paragraphs']):#每个doc有很多paragraphs，每个是词的list
-            if len(sample['segmented_answers']) > 0:#一个问题有多个答案，每个答案是词的list
+        for p_idx, para_tokens in enumerate(doc['segmented_paragraphs']):
+            if len(sample['segmented_answers']) > 0:
                 related_score = metric_max_over_ground_truths(recall,
-                                                              para_tokens,#一个paragraph
-                                                              sample['segmented_answers'])#多个答案
+                                                              para_tokens,
+                                                              sample['segmented_answers'])
             else:
                 continue
             if related_score > max_related_score \
@@ -168,7 +168,7 @@ def find_fake_answer(sample):
                 most_related_para = p_idx
                 most_related_para_len = len(para_tokens)
                 max_related_score = related_score
-        doc['most_related_para'] = most_related_para#每个doc most_related_para只有一篇
+        doc['most_related_para'] = most_related_para
 
     sample['answer_docs'] = []
     sample['answer_spans'] = []
@@ -179,22 +179,22 @@ def find_fake_answer(sample):
     best_match_d_idx, best_match_span = -1, [-1, -1]
     best_fake_answer = None
     answer_tokens = set()
-    for segmented_answer in sample['segmented_answers']:#获得答案中的所有词
+    for segmented_answer in sample['segmented_answers']:
         answer_tokens = answer_tokens | set([token for token in segmented_answer])
     for d_idx, doc in enumerate(sample['documents']):
-        if not doc['is_selected']:#如果是没有选中的doc就不要
+        if not doc['is_selected']:
             continue
-        if doc['most_related_para'] == -1:#segmented_answers没有答案
+        if doc['most_related_para'] == -1:
             doc['most_related_para'] = 0
-        most_related_para_tokens = doc['segmented_paragraphs'][doc['most_related_para']][:1000]#前1000个词
+        most_related_para_tokens = doc['segmented_paragraphs'][doc['most_related_para']][:1000]
         for start_tidx in range(len(most_related_para_tokens)):
-            if most_related_para_tokens[start_tidx] not in answer_tokens:#第一个出现在答案中的词
+            if most_related_para_tokens[start_tidx] not in answer_tokens:
                 continue
             for end_tidx in range(len(most_related_para_tokens) - 1, start_tidx - 1, -1):
-                span_tokens = most_related_para_tokens[start_tidx: end_tidx + 1]#选中一个span
+                span_tokens = most_related_para_tokens[start_tidx: end_tidx + 1]
                 if len(sample['segmented_answers']) > 0:
                     match_score = metric_max_over_ground_truths(f1_score, span_tokens,
-                                                                sample['segmented_answers'])#用f1score找到最好的span
+                                                                sample['segmented_answers'])
                 else:
                     match_score = 0
                 if match_score == 0:
@@ -204,9 +204,9 @@ def find_fake_answer(sample):
                     best_match_span = [start_tidx, end_tidx]
                     best_match_score = match_score
                     best_fake_answer = ''.join(span_tokens)
-    if best_match_score > 0:#只有一个fake_answer
-        sample['answer_docs'].append(best_match_d_idx)#是一个数字
-        sample['answer_spans'].append(best_match_span)#[begin, end]的list
+    if best_match_score > 0:
+        sample['answer_docs'].append(best_match_d_idx)
+        sample['answer_spans'].append(best_match_span)
         sample['fake_answers'].append(best_fake_answer)
         sample['match_scores'].append(best_match_score)
 
@@ -214,5 +214,5 @@ def find_fake_answer(sample):
 if __name__ == '__main__':
     for line in sys.stdin:
         sample = json.loads(line)
-        find_fake_answer(sample)#fake answer 是一个span
+        find_fake_answer(sample)
         print(json.dumps(sample, encoding='utf8', ensure_ascii=False))

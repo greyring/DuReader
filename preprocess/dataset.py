@@ -21,15 +21,15 @@ class Dataset(object):
         self.logger = logging.getLogger("brc")
         self.vocab = vocab
 
-        for file_name in self.train_files.split():
+        for file_name in self.train_files:
             self.logger.info('Reading train set...')
             self.train_set += self._load_dataset('train', file_name, self.max_line)
             self.logger.info('Train set size: %d docs.'%(len(self.train_set)))
-        for file_name in self.dev_files.split():
+        for file_name in self.dev_files:
             self.logger.info('Reading dev set...')
             self.dev_set += self._load_dataset('dev', file_name)
             self.logger.info('Dev set size: %d docs.'%(len(self.dev_set)))
-        for file_name in self.test_files.split():
+        for file_name in self.test_files:
             self.logger.info('Reading test set...')
             self.test_set += self._load_dataset('test', file_name)
             self.logger.info('Test set size: %d docs.'%(len(self.test_set)))

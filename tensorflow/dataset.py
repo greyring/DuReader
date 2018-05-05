@@ -39,7 +39,7 @@ class BRCDataset(object):
         self.train_set, self.dev_set, self.test_set = [], [], []
         if train_files:
             for train_file in train_files:
-                self.train_set += self._load_dataset(train_file, train=True, max_line=50000)
+                self.train_set += self._load_dataset(train_file, train=True, max_line=90000)
             self.logger.info('Train set size: {} questions.'.format(len(self.train_set)))
 
         if dev_files:
@@ -95,7 +95,7 @@ class BRCDataset(object):
                             para_infos.append((para_tokens, recall_wrt_question, len(para_tokens)))
                         para_infos.sort(key=lambda x: (-x[1], x[2]))
                         fake_passage_tokens = []
-                        for para_info in para_infos[:1]:
+                        for para_info in para_infos[:3]:
                             fake_passage_tokens += para_info[0]
                         sample['passages'].append({'passage_tokens': fake_passage_tokens})#根据和question的recall得到的passage
                         #这里是很可能出问题的，train的时候用的paragraph比较好，但实际中用的paragraph不是很好，这里需要改进
